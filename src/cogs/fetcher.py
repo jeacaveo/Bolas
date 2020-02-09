@@ -6,6 +6,7 @@ from discord.ext import commands
 from urllib.parse import quote
 
 from ..scryfall import ScryFall
+import scrython
 
 class Fetcher(commands.Cog):
     """
@@ -41,21 +42,25 @@ class Fetcher(commands.Cog):
         msg = message.content
         channel = message.channel
 
-        if len(re.findall(self.pattern, msg)) > self.MAX_CARDS_BEFORE_LIST:
+        queries = re.findall(self.pattern, msg)
+
+        if len(queries) > self.MAX_CARDS_BEFORE_LIST:
             await channel.send("Too many queries in one message.")
             return
 
-        for match in re.findall(self.pattern, msg):
-
+        for match in queries:
             cards = []
 
             if (len(match) < 3):
-                await channel.send("Query too short")
+                await channel.send(f"Query too short {match}")
                 continue
 
             # Convert card nicknames to their full names
-            if match.lower() in self.CARD_NICKNAMES:
-                match = self.CARD_NICKNAMES[match.lower()]
+            match = self.CARD_NICKNAMES.get(match.lower(), match)
+
+            # TODO Fix Scrython not working within Discord
+            xx = scrython.cards.Random()
+            print(xx)
 
             await asyncio.sleep(0.05)
             # Try to get an exact match first
