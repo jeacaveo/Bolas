@@ -9,6 +9,25 @@ from discord import Embed
 from discord.ext import commands
 
 
+def get_batches(start, stop, step):
+    """
+    Generate tuples based on params.
+
+    Example input: get_batches(0, 30, 10)
+
+    Example output: ((0, 10), (10, 20), (20, 30))
+
+    """
+    current = start
+    while current < stop:
+        next_current = current + step
+        if next_current < stop:
+            yield (current, next_current)
+        else:
+            yield (current, stop)
+        current = next_current
+
+
 class Diff(commands.Cog):
 
     def __init__(self, bot):
@@ -169,11 +188,15 @@ class Diff(commands.Cog):
             ([str(i) for i in diff[2]], diff[3])
         )
         for num, lst in enumerate(strdiff, start=1):
-            output = "\n".join(map(lambda x: "{} {}".format(*x), zip(*lst)))
-            # Discord doesn't like empty fields
-            if output:
-                embed.add_field(name="{} {}".format(name, num), value=output,
-                                inline=True)
+            result = list(map(lambda x: "{} {}".format(*x), zip(*lst)))
+            # Spliting into fields of 10 cards
+            # since Discord doesn't allow fields to be more than 1024 in length
+            for batch_num, batch in enumerate(
+                    get_batches(0, len(result), 10), start=1):
+                output = "\n".join(result[batch[0]:batch[1]])
+                embed.add_field(
+                    name=f"{name} {num}, Part {batch_num}",
+                    value=output, inline=True)
         return embed
 
     @commands.command()
@@ -201,12 +224,10 @@ class Diff(commands.Cog):
             self.format_diff_embed(maindiff, "Mainboard", result)
             self.format_diff_embed(sidediff, "Sideboard", result)
 
-            # Discord doesn't allow embeds to be more than 1024 in length
-            if len(result) < 1024:
+            if len(result) > 1:
                 await ctx.send(embed=result)
             else:
-                await ctx.send("Diff too long.")
-
+                await ctx.send("No differences.")
         except Diff.MessageError as e:
             return await(ctx.send(e.message))
 
